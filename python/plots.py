@@ -142,21 +142,22 @@ def plot_model_performance(y, pred):
     """
     cm = confusion_matrix(y, pred)
     print("Model performance:")
-    print(classification_report(y, pred))
-    fig, ax = plt.subplots(figsize=(5, 5))
+    print(classification_report(y, pred, target_names=['LGG', 'HGG']))
+    fig, ax = plt.subplots(figsize=(3, 3))
     plot_confusion_matrix(cm, ax=ax, labels=['LGG', 'HGG'])
     plt.show()
 
 
 def plot_confusion_matrix(cm, title='Confusion matrix', cmap=plt.cm.Blues,
                           ax=None, labels=[]):
+
     ax.matshow(cm, interpolation='nearest', cmap=cmap)
     ax.set_title(title)
-    ax.set_xticklabels([''] + labels)
-    ax.set_yticklabels([''] + labels)
-    ax.set_ylabel('True label')
-    ax.set_xlabel('Predicted label')
-    ax.text(0, 0, cm[0][0], color='black', ha='center', va='center')
-    ax.text(1, 0, cm[0][1], color='black', ha='center', va='center')
-    ax.text(0, 1, cm[1][0], color='black', ha='center', va='center')
-    ax.text(1, 1, cm[1][1], color='black', ha='center', va='center')
+    ax.set_xticklabels([''] + labels, fontsize=15)
+    ax.set_yticklabels([''] + labels, fontsize=15)
+    ax.set_ylabel('True label', fontsize=15)
+    ax.set_xlabel('Predicted label', fontsize=15)
+    ax.text(0, 0, cm[0][0], color='black', ha='center', va='center', fontsize=17)
+    ax.text(1, 0, cm[0][1], color='black', ha='center', va='center', fontsize=17)
+    ax.text(0, 1, cm[1][0], color='black', ha='center', va='center', fontsize=17)
+    ax.text(1, 1, cm[1][1], color='black', ha='center', va='center', fontsize=17)

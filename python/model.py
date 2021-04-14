@@ -176,3 +176,117 @@ def pool(x, stride):
                          strides=stride, padding='VALID')) for o in x]
     return K
 
+
+
+class LayerModelBase:
+
+    def __init__(self, original_model: Model, selected_layer):
+        self._model = Model(
+            inputs=original_model.inputs,
+            outputs=original_model.layers[selected_layer].output
+        )
+
+    def layer_activations(self, x):
+        activations = self._model.predict(x)
+        return flatten_array_elements(activations)
+
+    def layer_activations_generator(self, generator, batch_size):
+        all_labels = []
+        all_activations = None
+        for _ in range(round(generator.samples / batch_size)):
+            (images, labels) = generator.next()
+            activations = self._model.predict(images)
+            all_labels.extend(labels)
+            if all_activations is None:
+                all_activations = activations
+            else:
+                all_activations = [
+                    np.concatenate((a1, a2), axis=0)
+                    for a1, a2 in zip(all_activations, activations)
+                ]
+        return get_flatten_activations(all_activations), all_labels
+
+
+class LayerKNNModel(LayerModelBase):
+    def __init__(self, original_model: Model, selected_layer, knn_model=None):
+        super().__init__(original_model, selected_layer)
+        self._knn = knn_model if knn_model else KNeighborsClassifier(n_neighbors=5, n_jobs=8)
+
+    def train_knn(self, x, y):
+        layer_activations = self.layer_activations(x)
+        self.train_knn_with_activations(layer_activations, y)
+
+    def train_knn_with_activations(self, layer_activations, y):
+        self._knn.fit(layer_activations, y)
+
+    def predict_knn(self, x):
+        layer_activations = self.layer_activations(x)
+        return self._knn.predict_proba(layer_activations)
+
+    def get_neighbours_idx(self, x):
+        layer_activations = self.layer_activations(x)
+        neigh = self._knn.kneighbors(layer_activations)
+        return neigh[1]
+
+
+class BiLRPLayerModel(LayerKNNModel):
+    def __init__(self, original_model: Model, selected_layer, analyzer=None, knn_model=None):
+        super().__init__(original_model, selected_layer, knn_model)
+        self._analyzer = analyzer
+        self.output_shape = original_model.output.shape
+
+    def initialize_analyzer(self, method, params):
+        self._analyzer = innvestigate.create_analyzer(method, self._model, **params)
+
+    def top_common_activations(self, img1, img2, top_n):
+        layers_activations = self.layer_activations(np.array([img1, img2]))
+        return layers_activations.mean(0).argsort()[-top_n:][::-1]
+
+    def pair_similarity(self, img1, img2, poolstride=1, top_neurons=None):
+        if self._analyzer is None:
+            raise Exception("Analyzer is not initialized!")
+        selected_neurons = None if top_neurons is None else self.top_common_activations(img1, img2, top_neurons)
+        return self.analyze_pair(img1, img2, poolstride, selected_neurons)
+
+    def lrp(self, data):
+        if self._analyzer is None:
+            raise Exception("Analyzer is not initialized!")
+        return self._analyzer.analyze(data)
+
+    def analyze_pair(self, img1, img2, poolstride=1, neuron_selection=None):
+
+        if neuron_selection is None:
+            size = (tf.math.reduce_prod(self.output_shape[1:]))
+            r1 = np.empty((size, img1.shape[0], img1.shape[1]))
+            r2 = np.empty((size, img1.shape[0], img1.shape[1]))
+            iterator = range(size)
+        else:
+            r1 = np.empty((len(neuron_selection), img1.shape[0], img1.shape[1]))
+            r2 = np.empty((len(neuron_selection), img1.shape[0], img1.shape[1]))
+            iterator = neuron_selection
+
+        for n, i in enumerate(iterator):
+            R = self._analyzer.analyze([img1, img2], neuron_selection=int(i))[
+                'input_layer']
+            r1[n] = R[0].sum(2)
+            r2[n] = R[1].sum(2)
+        # dot product of Ri . Ri'
+        return np.tensordot(pool(r1, poolstride), pool(r2, poolstride),
+                            axes=(0, 0))
+
+
+class SimilarityCasesModel:
+    def __init__(self, original_model: Model, selected_layers):
+        self.layer_models = [
+            LayerKNNModel(original_model, layer, None) for layer in selected_layers
+        ]
+
+    def layers_activations(self, data):
+        return [model.layer_activations(data) for model in self.layer_models]
+
+    def train_knns(self, data, labels):
+        for model in self.layer_models:
+            model.train_knn(data, labels)
+
+    def predict_similar_cases(self, data):
+        return [model.predict_knn(data) for model in self.layer_models]

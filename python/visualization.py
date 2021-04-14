@@ -106,8 +106,9 @@ def plot_suspicions_stats(y_susp, y_true, pred_label, class_names):
     plt.show()
 
 
-def visualize_image(image, pred, label, gs=None):
+def visualize_image(image, pred, label, class_names, gs=None):
     ax = gs.subgridspec(1, 1).subplots()
+    ax.set_title("true label: " + class_names[int(label)] + "\nprediction: " + class_names[int(pred)])
     ax.imshow(image)
     ax.set_axis_off()
 
@@ -131,7 +132,7 @@ def visualize_path(layers_idx, atlas_images, atlas_labels, class_names, gs=None)
 
 def visualize_path_lrp(layers_idx, atlas_images, atlas_labels, image, label,
                        pred, analyzer, class_names):
-    print('original:', str(class_names[label]), ' predicted:', str(class_names[pred]))
+    print('original:', str(class_names[int(label)]), '\npredicted:', str(class_names[int(pred)]))
     analyzed_image = analyzer.analyze([image])
     analyzed_image = analyzed_image['input_layer']
     analyzed_image = analyzed_image.sum(
@@ -150,7 +151,7 @@ def visualize_path_lrp(layers_idx, atlas_images, atlas_labels, image, label,
                 axis=np.argmax(np.asarray(analyzed_image.shape) == 3))
             analyzed_image /= np.max(np.abs(analyzed_image))
             axs[y][x].imshow(analyzed_image[0], cmap="seismic", clim=(-1, 1))
-            axs[y][x].set_title(str(class_names[atlas_labels[idx]]))
+            axs[y][x].set_title(str(class_names[int(atlas_labels[idx])]))
             axs[y][x].set_axis_off()
 
     plt.show()
@@ -207,7 +208,7 @@ def plot_relevances(c, x1, x2, clip_func, stride, fname=None, curvefac=1., gs=No
     if gs is not None:
         ax = gs.subgridspec(1, 1, wspace=0, hspace=0).subplots()
     else:
-        fig, ax = plt.subplots(figsize=(5, 10))
+        fig, ax = plt.subplots(figsize=(15, 20))
     # plt.ylim(-hpad, h + hpad - 1)
     # plt.xlim(0, w * 2 + wgap - 1)
 
@@ -249,11 +250,18 @@ def plot_relevances(c, x1, x2, clip_func, stride, fname=None, curvefac=1., gs=No
 
     plt.axis('off')
 
-    # if fname:
-    #     plt.savefig(fname, dpi=200)
-    # else:
-    #     plt.show()
-    # plt.close()
+
+def plot_pair_lrp(x1, x2, analyzer, gs=None, title=None):
+    analysis = analyzer.analyze(np.array(x1, x2))
+    a1 = analysis['input_layer'][0]
+    a2 = analysis['input_layer'][1]
+
+    if gs is not None:
+        axs = gs.subgridspec(1, 2, wspace=0, hspace=0).subplots()
+    else:
+        fig, axs = plt.subplots(figsize=(15, 20))
+    plot_lrp(a1, axs[0])
+    plot_lrp(a2, axs[1])
 
 
 def plot_lrp(img, ax=None, title=None):
@@ -262,8 +270,9 @@ def plot_lrp(img, ax=None, title=None):
         fig, ax = plt.subplots(1, 1)
 
     ax.imshow(img, cmap='seismic', clim=(-1, 1))
-    ax.set_title(title if title else "")
-    ax.axis('off')
+    ax.set_title(title if title else "", fontsize=15)
+    ax.get_xaxis().set_ticks([])
+    ax.get_yaxis().set_ticks([])
 
 
 def plot_rgb(img, ax=None, title=None):
@@ -272,7 +281,7 @@ def plot_rgb(img, ax=None, title=None):
         fig, ax = plt.subplots(1, 1)
 
     ax.imshow(img)
-    ax.set_title(title if title else "")
+    ax.set_title(title if title else "", fontsize=15)
     ax.axis('off')
 
 
@@ -282,5 +291,5 @@ def plot_gray(img, ax=None, title=None):
         fig, ax = plt.subplots(1, 1)
 
     ax.imshow(img, cmap='gray')
-    ax.set_title(title if title else "")
+    ax.set_title(title if title else "", fontsize=15)
     ax.axis('off')

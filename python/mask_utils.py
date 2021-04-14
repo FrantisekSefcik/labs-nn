@@ -1,13 +1,13 @@
 import numpy as np
+import innvestigate
+import math
 
 
 def mask_loss_val(x, x_analysis, x_seg):
     mask_values = [
         mask_value(i_a, i, get_mask_of_seg_rgb(i_s))
         for i, i_a, i_s in zip(x, x_analysis, x_seg)]
-    m = np.mean(mask_values)
-    del mask_values
-    return m
+    return np.mean(mask_values)
 
 
 def mask_value(heatmap, image, mask):
@@ -102,3 +102,25 @@ def get_mask_of_seg_rgb(segmentation, threshold=0, exact=False):
     for ch in range(3):
         new_mask[:, :, ch] = new_seg
     return new_mask
+
+
+def get_mask_stat(gen, gen_seg, model, batch_size=32):
+    analyzer = innvestigate.create_analyzer("lrp.epsilon", model, epsilon=1)
+    num_batches = math.ceil(gen.samples / batch_size)
+    labels = []
+    pred = []
+    mask_values = []
+    for i, ((images, y), (images_seg, _)) in enumerate(zip(gen, gen_seg)):
+        if i >= num_batches:
+            break
+        prob = model.predict(images)
+        analysis = analyzer.analyze(images)["input_layer"]
+        mask = [
+            mask_value(i_a, i, get_mask_of_seg_rgb(i_s))
+            for i, i_a, i_s in zip(images, analysis, images_seg)
+        ]
+        p = prob.argmax(axis=1)
+        pred.extend(p)
+        labels.extend(y)
+        mask_values.extend(mask)
+    return np.array(mask_values), np.array(pred), np.array(labels)

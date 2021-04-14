@@ -18,22 +18,24 @@ class LggHggGenerator:
             'seed': self.seed
         }
 
-    def get_image_generator(self, batch_size=16):
+    def get_image_generator(self, batch_size=16, shuffle=False):
         return self.image_generator.flow_from_directory(batch_size=batch_size,
                                                         directory=self.image_dir,
                                                         classes=['LGG', 'HGG'],
                                                         color_mode="rgb",
                                                         target_size=(240, 240),
                                                         class_mode='sparse',
+                                                        shuffle=shuffle,
                                                         seed=self.seed)
 
-    def get_seg_generator(self, batch_size=16):
+    def get_seg_generator(self, batch_size=16, shuffle=False):
         return self.seg_generator.flow_from_directory(batch_size=batch_size,
                                                       directory=self.seg_dir,
                                                       classes=['LGG', 'HGG'],
                                                       color_mode="grayscale",
                                                       target_size=(240, 240),
                                                       class_mode='sparse',
+                                                      shuffle=shuffle,
                                                       seed=self.seed)
 
     def get_image_seg_generator(self, batch_size=16):
