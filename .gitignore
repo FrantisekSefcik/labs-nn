@@ -4,3 +4,5 @@ data/
 models/
 __pycache__
 env
+notebooks/data_logs/*
+DP_sefcik.pdf

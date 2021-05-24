@@ -3,13 +3,6 @@ import innvestigate
 import math
 
 
-def mask_loss_val(x, x_analysis, x_seg):
-    mask_values = [
-        mask_value(i_a, i, get_mask_of_seg_rgb(i_s))
-        for i, i_a, i_s in zip(x, x_analysis, x_seg)]
-    return np.mean(mask_values)
-
-
 def mask_value(heatmap, image, mask):
     """
     Function to count metric how analysis hit into mask.
